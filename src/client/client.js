@@ -1,10 +1,11 @@
 import fs from "fs";
 
 import axios from "axios";
+import bitcoin from "bitcoinjs-lib";
 import { Chain, Common, Hardfork } from "@ethereumjs/common";
 import { Transaction } from "@ethereumjs/tx";
 import { VM } from "@ethereumjs/vm";
-import { Account, Address } from "@ethereumjs/util";
+import { Account, Address, baToJSON } from "@ethereumjs/util";
 import { DefaultStateManager } from "@ethereumjs/statemanager";
 import { Trie } from "@ethereumjs/trie";
 import { Level } from "level";
@@ -104,7 +105,7 @@ async function callRpcMethod(method, params = []) {
     
         return response.data.result;
     } catch (error) {
-      console.error('Error calling RPC method:', error);
+      console.error('Error calling RPC method:', error.response);
     }
 }
 
@@ -117,31 +118,34 @@ async function sync() {
         const transactions = block.tx;
 
         for (const transaction of transactions) {
+            let batchHex = "";
+
             for (const output of transaction.vout) {
                 // Check if recipient is the rollup address
                 if (
                     output.scriptPubKey && 
                     output.scriptPubKey.address && 
                     output.scriptPubKey.hex &&
-                    output.scriptPubKey.address === ROLLUP_ADDRESS 
+                    transaction.vout[0].scriptPubKey.address === ROLLUP_ADDRESS 
                 ) {
-                    try {
-                        let batchHex = "";
-                        batchHex += output.scriptPubKey.hex;
-
-                        console.log(batchHex);
-                    } catch (e) {
-                        // Debug
-                        console.log(e);
-                    }
+                    batchHex += output.scriptPubKey.hex;
                 }
             }
+
+            const sequencerAddress = batchHex.slice(0, 20);
+            batchHex = batchHex.slice(20);
+
+            const batch = await decodeBatch("0x" + batchHex, addressDB);
+
+            await transitState(batch, vm, sequencerAddress, addressDB, indexDB);
         }
     } catch (error) {
         console.error("LOG :: Error fetching block:", error);
         // Re-sync block
         setTimeout(sync);
     }
+
+    console.log("LOG :: Synced up to", counter.toString() + ", please wait.");
 
     counter++;
 
@@ -150,7 +154,7 @@ async function sync() {
         currentIndex
     }));
 
-    // setTimeout(sync);
+    setTimeout(sync);
 }
 
 await sync();
@@ -162,33 +166,7 @@ const transactionPool = [];
 
 rpc(RPC_PORT, { vm, transactionPool, config, addressDB, indexDB, trie });
 
-const transaction = {
-    isToEmpty: 0,
-    to: "029B93211e7793759534452BDB1A74b58De22C9c",
-    data: "",
-    nonce: 0,
-    gas: 2097152,
-    gasPrice: 33554432,
-    value: 320000000n
-}
 
-const tx = signTx(transaction, Buffer.from(PRIVKEY.slice(2), "hex"));
-const raw = (await encodeTransaction(tx, indexDB)).slice(2);
-
-const utxos = await callRpcMethod("listunspent", []);
-// Absolutely dumb, only using this for testing
-const topUtxo = utxos[utxos.length - 1];
-
-const rawTransaction = await callRpcMethod('createrawtransaction', [
-    [
-        {
-            txid: topUtxo.txid,
-            vout: topUtxo.vout
-        }
-    ],
-]);
-
-/*
 // Sequencers
 
 if (SEQUENCER_MODE) {
@@ -197,11 +175,41 @@ if (SEQUENCER_MODE) {
     setInterval(async () => {
         if (transactionPool.length === 0) return;
 
+        const batch = (await encodeBatch(transactionPool.slice(0, 100), indexDB)).slice(2);
+
+        const dataToEmbed = [];
+        
+        while (batch.length !== 0) {
+            const packet = batch.slice(0, 160);
+            batch = batch.slice(160);
+            
+            dataToEmbed.push(Buffer.from(packet, "hex"));
+        }
+        
+        const utxos = await callRpcMethod("listunspent", []);
+        // Absolutely dumb, only using this for testing
+        const topUtxo = utxos[utxos.length - 1];
+        
+        const network = bitcoin.networks.regtest;
+        const psbt = new bitcoin.Psbt(network);
+        psbt.addInput({ hash: topUtxo.txid, index: topUtxo.vout });
+        
+        // Add each data as output
+        dataToEmbed.forEach(data => {
+            psbt.addOutput({ script: bitcoin.payments.embed({ data: [data] }).output, value: 0 });
+        });
+        
+        // Fill in the missing sigs of provided inputs
+        const rawPSBT = (await callRpcMethod("walletprocesspsbt", [psbt.toBase64()])).psbt;
+        
+        // Finalize psbt (turn psbt into a valid raw transaction)
+        const rawTx = (await callRpcMethod("finalizepsbt", [rawPSBT])).hex;
+        
+        // Send the transactioon
+        await callRpcMethod("sendrawtransaction", [rawTx]);
 
         // Remove sequenced transactions
-        transactionPool.splice(0, 100);
-    }, 5000);
-    // Sequencers don't necessarily need to wait for 5 seconds before submitting another batch, 
-    // but we currently do this to reduce the work load in case of high traffic
+        transactionPool.splice(0, 30);
+    }, 100000); // The time should be changed accordingly depending on whether you are using regtest or using mainnet, with mainnet,
+              // you need 10 minutes which is 600000 milliseconds.
 }
-*/

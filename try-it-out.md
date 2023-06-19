@@ -119,4 +119,4 @@ Use the JSON-RPC method `feed_transaction` to send the transaction.
 
 ## Reset the chain
 
-If you want to reset the chain and try the test again, you can change the `START_SYNC` configuration to the current Bitcoin block height, delete the old database folders and re-run the node. This will reset the state and ignore all previous transactions.
+If you want to reset the chain, you can change the START_SYNC configuration to the current Bitcoin block height (if you are running regtest, use your own chain's block height), delete the old database folders and re-run the node. What this does it that it will start off with an entirely new state, ignoring all transactions done in the past, therefore making an entirely new chain.

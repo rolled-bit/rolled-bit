@@ -1,10 +1,9 @@
-**My Dorahacks submission: https://dorahacks.io/buidl/6503**
-
 ## Running the node
 
 ### Dependencies
 
 * Latest releases of Node and npm.
+* Bitcoin Core.
 
 ### Installation
 
@@ -18,6 +17,26 @@ In the downloaded folder, install all the needed NPM packages:
 
 ```
 npm install 
+```
+
+For Bitcoin Core, you can simply to into their website: https://bitcoin.org/en/bitcoin-core/ and download the latest release. Note that Windows users might have to configure PATH to have all the tools available to use on command-line.
+
+### Setting up your Bitcoin node
+
+It is recommended to test Rolled Bit with a regtest Bitcoin node. After you have installed Bitcoin Core, open your terminal and type:
+
+```sh
+# 18332 is the standard port for regtest, change the username, password and fallback fee if you want
+bitcoind -chain=regtest -rpcport=18332 -rpcuser=rpcuser -rpcpassword=rpcpass -fallbackfee=0.000001
+```
+
+In another console, type:
+
+```sh
+# Create a wallet
+bitcoin-cli -regtest createwallet "mywallet"
+# Generate 101 blocks, this is to give your wallet coins to start
+bitcoin-cli -regtest -generate 101
 ```
 
 ### Configuration
@@ -98,6 +117,6 @@ To test it out yourself, go to [`try-it-out.md`](./try-it-out.md);
 
 ### Reset the chain
 
-If you want to reset the chain, you can change the START_SYNC configuration to the current Bitcoin block height, delete the old database folders and re-run the node. What this does it that it will start off with an entirely new state, ignoring all transactions done in the past, therefore making an entirely new chain.
+If you want to reset the chain, you can change the START_SYNC configuration to the current Bitcoin block height (if you are running regtest, use your own chain's block height), delete the old database folders and re-run the node. What this does it that it will start off with an entirely new state, ignoring all transactions done in the past, therefore making an entirely new chain.
 
 This is alos mentioned again in `try-it-out.md`.
