@@ -2,6 +2,8 @@
 
 🧷 [Documentation + Dorahacks submission](https://dorahacks.io/buidl/6503)
 
+🧷 [Pitch video](https://youtu.be/k-ocFe_NTvE)
+
 🧷 [Code repository](https://github.com/rolled-bit/rolled-bit/)
 
 🧷 [How to run nodes](https://github.com/rolled-bit/rolled-bit/blob/main/README.md)
