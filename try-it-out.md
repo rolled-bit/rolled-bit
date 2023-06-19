@@ -4,6 +4,10 @@ You first need to run an Rolled Bit client to test. Details are mentioned in the
 
 Note: You should keep the configuration the same, only changing the database path, or else it might not work with these tests.
 
+## NFT contract
+
+If you want to try out an ERC721 NFT contract built on Rolled Bit, have a look at `examples/erc721-contract`.
+
 ## Greeter contract
 
 Imagine we have a contract like this:
