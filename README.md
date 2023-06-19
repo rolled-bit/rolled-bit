@@ -8,7 +8,7 @@
 
 🧷 [How to run nodes](https://github.com/rolled-bit/rolled-bit/blob/main/README.md)
 
-🧷 [RPC documentation](https://github.com/artlayer/artlayer/blob/main/RPC.md)
+🧷 [RPC documentation](https://github.com/rolled-bit/rolled-bit/blob/main/RPC.md)
 
 🧷 [Try it out](https://github.com/rolled-bit/rolled-bit/blob/main/try-it-out.md)
 
